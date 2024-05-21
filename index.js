@@ -29,6 +29,7 @@ async function run() {
         const database = client.db("bistroDB");
         const menuCollection = database.collection("menu");
         const reviewsCollection = database.collection("reviews");
+        const cartCollection = database.collection("carts");
 
         app.get("/menu", async (req, res) => {
             const reault = await menuCollection.find().toArray();
@@ -40,12 +41,25 @@ async function run() {
             res.send(reault);
         })
 
+        // Carts Collection
+        app.get("/carts", async (req, res) => {
+            const email = req.query.email;
+            const query = { email: email };
+            const result = await cartCollection.find(query).toArray();
+            res.send(result);
+        })
+
+        app.post("/carts", async (req, res) => {
+            const cartItem = req.body;
+            const result = await cartCollection.insertOne(cartItem);
+            res.send(result);
+        })
+
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
-        // Ensures that the client will close when you finish/error
         // await client.close();
     }
 }
@@ -53,9 +67,9 @@ run().catch(console.dir);
 
 
 app.get("/", (req, res) => {
-    res.send("server is running");
+    res.send("Server is running");
 })
 
 app.listen(port, () => {
-    console.log(`server is running on ${port}`);
+    console.log(`Server is running on ${port}`);
 })
