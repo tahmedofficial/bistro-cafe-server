@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
@@ -27,9 +27,22 @@ async function run() {
         await client.connect();
 
         const database = client.db("bistroDB");
+        const userCollection = database.collection("users");
         const menuCollection = database.collection("menu");
         const reviewsCollection = database.collection("reviews");
         const cartCollection = database.collection("carts");
+
+        // Users related api
+        app.post("/users", async (req, res) => {
+            const user = req.body;
+            const query = { email: user.email }
+            const existingUser = await userCollection.findOne(query);
+            if (existingUser) {
+                return res.send({ message: "user already exists", insertrdId: null })
+            }
+            const result = await userCollection.insertOne(user);
+            res.send(result);
+        })
 
         app.get("/menu", async (req, res) => {
             const reault = await menuCollection.find().toArray();
@@ -52,6 +65,13 @@ async function run() {
         app.post("/carts", async (req, res) => {
             const cartItem = req.body;
             const result = await cartCollection.insertOne(cartItem);
+            res.send(result);
+        })
+
+        app.delete("/carts/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await cartCollection.deleteOne(query);
             res.send(result);
         })
 
