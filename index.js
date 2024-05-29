@@ -213,8 +213,8 @@ async function run() {
             if (email !== req.decoded.email) {
                 return res.status(403).send({ message: "forbidden access" });
             }
-            const reault = await paymentCollection.find(query).toArray();
-            res.send(reault);
+            const result = await paymentCollection.find(query).toArray();
+            res.send(result);
         })
 
         app.post("/payments", async (req, res) => {
@@ -232,6 +232,59 @@ async function run() {
             const deleteResult = await cartCollection.deleteMany(query);
 
             res.send({ paymentResult, deleteResult });
+        })
+
+        // Stats and Analytics
+        app.get("/admin-stats", verifyToken, verifyAdmin, async (req, res) => {
+            const users = await userCollection.estimatedDocumentCount();
+            const menuItems = await menuCollection.estimatedDocumentCount();
+            const orders = await paymentCollection.estimatedDocumentCount();
+
+            // this is not the best way
+            // const payments = await paymentCollection.find().toArray();
+            // const revenue = payments.reduce((total, payment) => total + payment.price, 0)
+
+            const result = await paymentCollection.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        totalRevenue: { $sum: "$price" }
+                    }
+                }
+            ]).toArray();
+
+            const revenue = result.length > 0 ? result[0].totalRevenue : 0;
+
+            res.send({ users, menuItems, orders, revenue })
+        })
+
+        // Using aggregate Popeline
+        app.get("/order-state", async (req, res) => {
+            const result = await paymentCollection.aggregate([
+                {
+                    $unwind: "$menuItemIds"
+                },
+                {
+                    $lookup: {
+                        from: "menu",
+                        localField: "menuItemIds",
+                        foreignField: "_id",
+                        as: "menuItems"
+                    }
+                },
+                {
+                    $unwind: "$menuItems"
+                },
+                {
+                    $group: {
+                        _id: "$menuItems.category",
+                        quantity: { $sum: 1 },
+                        revenue: { $sum: "$menuItems.price" }
+                    }
+                }
+            ]).toArray();
+
+            res.send(result);
         })
 
 
