@@ -27,7 +27,7 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
 
         const database = client.db("bistroDB");
         const userCollection = database.collection("users");
@@ -259,7 +259,7 @@ async function run() {
         })
 
         // Using aggregate Popeline
-        app.get("/order-state", async (req, res) => {
+        app.get("/order-state", verifyToken, verifyAdmin, async (req, res) => {
             const result = await paymentCollection.aggregate([
                 {
                     $unwind: "$menuItemIds"
@@ -281,6 +281,14 @@ async function run() {
                         quantity: { $sum: 1 },
                         revenue: { $sum: "$menuItems.price" }
                     }
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        category: "$_id",
+                        quantity: "$quantity",
+                        revenue: "$revenue"
+                    }
                 }
             ]).toArray();
 
@@ -289,8 +297,8 @@ async function run() {
 
 
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        // await client.db("admin").command({ ping: 1 });
+        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // await client.close();
     }
